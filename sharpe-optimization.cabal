@@ -1,0 +1,33 @@
+cabal-version:      3.0
+name:               sharpe-optimization
+version:            0.1.0.0
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             PedroPauloMorenoCamargo
+maintainer:         ppmcamargo@gmail.com
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+
+common warnings
+  ghc-options: -Wall
+
+library
+  import:              warnings
+  exposed-modules:     SharpeOptimization.Types
+  other-modules:       SharpeOptimization.DataLoader
+                       SharpeOptimization.Simulate
+                       SharpeOptimization.Statistics
+                       SharpeOptimization.Weights
+  hs-source-dirs:      src
+  build-depends:       base ^>=4.18.3.0
+  default-language:    Haskell2010
+
+executable sharpe-optimization-exe
+  import:              warnings
+  main-is:             Main.hs
+  hs-source-dirs:      app
+  build-depends:       base ^>=4.18.3.0,
+                       sharpe-optimization
+  default-language:    Haskell2010
+
+
