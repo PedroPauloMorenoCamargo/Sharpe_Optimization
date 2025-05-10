@@ -1,7 +1,11 @@
 module SharpeOptimization.Statistics( 
     combinations,
     matrix_line_multiply,
-    matrix_multiplied_by_vector
+    matrix_multiplied_by_vector,
+    vector_multiplied_by_matrix,
+    mean,
+    selectByIndices,
+    transpose
   ) where
 
 
@@ -36,3 +40,8 @@ mean xs = sum xs / fromIntegral (length xs)
 selectByIndices :: [Int] -> [a] -> [a]
 selectByIndices idxs xs = map (xs !!) idxs
 
+
+transpose :: [[a]] -> [[a]]
+transpose [] = []
+transpose ([]:_) = []
+transpose x = (map head x) : transpose (map tail x)
