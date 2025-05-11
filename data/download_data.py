@@ -1,5 +1,13 @@
+# data/download_data.py
 import yfinance as yf
 import pandas as pd
+import sys
+
+if len(sys.argv) != 5:
+    print("Uso: python download_data.py <train_start> <train_end> <test_start> <test_end>")
+    sys.exit(1)
+
+train_start, train_end, test_start, test_end = sys.argv[1:]
 
 tickers = [
     "AAPL", "AMGN", "AXP", "BA", "CAT", "CRM", "CSCO", "CVX", "DIS", "DOW",
@@ -8,8 +16,8 @@ tickers = [
 ]
 
 periods = {
-    "dow_jones_2sem_2024.csv": ("2024-07-01", "2024-12-31"),
-    "dow_jones_1tri_2025.csv": ("2025-01-01", "2025-03-31"),
+    "data/training.csv": (train_start, train_end),
+    "data/result.csv": (test_start, test_end),
 }
 
 for filename, (start, end) in periods.items():
@@ -17,3 +25,4 @@ for filename, (start, end) in periods.items():
     data = yf.download(tickers, start=start, end=end)["Close"]
     data.to_csv(filename)
     print(f"Salvo: {filename}")
+print("Download concluído.")
