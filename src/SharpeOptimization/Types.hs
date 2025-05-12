@@ -1,20 +1,24 @@
-module SharpeOptimization.Types (
-    StockName,
-    Price,
-    Return,
-    Weights,
-    PricesRow,
-    ReturnsRow,
-    PriceMatrix,
-    ReturnMatrix
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
-) where
+-- | Centralised type aliases.  Outer matrices stay boxed
+--   (Vector of rows) but every row is now an *unboxed* `U.Vector Double`.
+module SharpeOptimization.Types
+  ( Price, Return
+  , Weights
+  , PricesRow , ReturnsRow
+  , PriceMatrix , ReturnMatrix , CovarianceMatrix
+  ) where
 
-type StockName    = String
-type Price        = Double
-type Return       = Double
-type Weights      = [Double]
-type PricesRow    = [Price]
-type ReturnsRow   = [Return]
-type PriceMatrix  = [PricesRow]
-type ReturnMatrix = [ReturnsRow]
+import qualified Data.Vector          as V
+import qualified Data.Vector.Unboxed  as U
+
+type Price   = Double
+type Return  = Double
+type Weights = U.Vector Double          -- unboxed
+
+type PricesRow  = U.Vector Price        -- days → price per asset
+type ReturnsRow = U.Vector Return       -- days → return per asset
+
+type PriceMatrix     = V.Vector PricesRow      -- boxed outer / unboxed inner
+type ReturnMatrix    = V.Vector ReturnsRow
+type CovarianceMatrix = V.Vector (U.Vector Double)
