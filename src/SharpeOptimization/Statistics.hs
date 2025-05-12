@@ -1,144 +1,173 @@
---   Module providing basic statistical and linear algebra utilities.
---   These functions are used for portfolio optimization calculations.
-module SharpeOptimization.Statistics ( 
-    combinations,
-    selectByIndexes,
-    sharpeRatio,
-    pricesToReturns
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE BangPatterns #-}
+
+module SharpeOptimization.Statistics
+  ( combinations
+  , selectByIndexesU
+  , mean
+  , muVector
+  , covarianceMatrix
+  , dotProductU
+  , matVecU
+  , sharpeRatioFast
+  , priceMatrixToReturns
+  , toPriceMatrix
   ) where
 
 import SharpeOptimization.Types
+import qualified Data.Vector         as V
+import qualified Data.Vector.Unboxed as U
+import qualified Data.Vector.Generic as G
+import           Data.List (subsequences)
 
---   Returns all possible combinations of k elements from a list.
---   The elements retain their original order in each combination.
---   If k > length xs, returns an empty list.
---   Example: combinations 2 [1,2,3] == [[1,2],[1,3],[2,3]]
+----------------------------------------------------------------------
+-- Combinatorics
+----------------------------------------------------------------------
+
+-- | Generates all possible combinations of 'k' elements from a given list.
+--   If 'k' is greater than the length of the list, returns an empty list.
+--   Example:
+--     combinations 2 [1,2,3] == [[1,2], [1,3], [2,3]]
 combinations :: Int -> [a] -> [[a]]
 combinations 0 _      = [[]]
 combinations _ []     = []
-combinations k xs | k > length xs = []
-combinations 1 xs = map (:[]) xs
-combinations k (x:xs) = map (x:) (combinations (k-1) xs) ++ combinations k xs
+combinations k (x:xs)
+  | k < 0     = []
+  | otherwise = map (x:) (combinations (k-1) xs) ++ combinations k xs
 
---   Computes the dot product of two vectors (element-wise product summed).
---   Returns 0 if either list is empty.
---   Example: dotProduct [1,2] [3,4] == 1*3 + 2*4 == 11
-dotProduct :: [Double] -> [Double] -> Double
-dotProduct [] _ = 0
-dotProduct _ [] = 0
-dotProduct (x:xs) (y:ys) = x * y + dotProduct xs ys
+----------------------------------------------------------------------
+-- Vector utilities for unboxed data
+----------------------------------------------------------------------
 
---   Multiplies a matrix (represented as a list of rows) by a column vector. Matrix * Vector.
---   For each row in the matrix, computes the dot product with the vector.
---   Assumes the vector has the same length as the number of columns in the matrix.
---   Returns a vector with one element per row.
---   Example: matrixVectorProduct [[1,2],[3,4]] [5,6] == [1*5+2*6, 3*5+4*6] == [17,39]
-matrixVectorProduct :: [[Double]] -> [Double] -> [Double]
-matrixVectorProduct [] _ = []
-matrixVectorProduct _ [] = []
-matrixVectorProduct (x:xs) v = dotProduct x v : matrixVectorProduct xs v
+-- | Selects a subset of elements from an unboxed vector, given a list of indices.
+--   Example:
+--     selectByIndexesU [0,2] (U.fromList [10.0, 20.0, 30.0]) == U.fromList [10.0, 30.0]
+selectByIndexesU :: U.Unbox a => [Int] -> U.Vector a -> U.Vector a
+selectByIndexesU idxs v = U.backpermute v (U.fromList idxs)
 
---   Multiplies a row vector by a matrix (list of columns). Vector * Matrix.
---   The matrix is transposed before multiplication to align columns as rows.
---   Assumes the vector has the same length as the number of rows in the matrix.
---   Returns a vector where each element is the dot product between the vector and a column of the matrix.
---   Example: vectorMatrixProduct [1,2] [[1,2],[3,4]] == [1*1 + 2*3, 1*2 + 2*4] == [7,10]
-vectorMatrixProduct :: [Double] -> [[Double]] -> [Double]
-vectorMatrixProduct [] _ = []
-vectorMatrixProduct _ [] = []
-vectorMatrixProduct v m = map (dotProduct v) (transpose m)
+-- | Computes the dot product of two unboxed vectors.
+--   If vectors have different lengths, excess elements are ignored.
+--   Example:
+--     dotProductU (U.fromList [1.0, 2.0]) (U.fromList [3.0, 4.0]) == 11.0
+dotProductU :: U.Vector Double -> U.Vector Double -> Double
+dotProductU v1 v2 = U.sum (U.zipWith (*) v1 v2)
 
---   Computes the arithmetic mean (average) of a list of Doubles. u = Σx / n
---   Assumes the list is non-empty.
---   Example: mean [1.0, 2.0, 3.0] == 2.0
-mean :: [Double] -> Double
-mean xs = sum xs / fromIntegral (length xs)
+-- | Multiplies a matrix (represented as a boxed vector of unboxed rows)
+--   by a column vector. Each row is dotted with the input vector.
+--   Returns the resulting unboxed vector.
+--   Used for computing portfolio variance and other linear algebra ops.
+matVecU :: V.Vector (U.Vector Double) -> U.Vector Double -> U.Vector Double
+matVecU m v = U.generate (V.length m) $ \i -> dotProductU (m V.! i) v
 
---   Selects elements from a list using a list of indexes.
---   Assumes that all indexes are within bounds of the list.
---   Example: selectByIndexes [0,2] ["a","b","c"] == ["a","c"]
-selectByIndexes :: [Int] -> [a] -> [a]
-selectByIndexes idxs xs = map (xs !!) idxs
+----------------------------------------------------------------------
+-- Mean vector and covariance matrix
+----------------------------------------------------------------------
 
---   Transposes a matrix (list of lists), converting rows into columns.
---   Assumes the matrix is rectangular.
---   Example: transpose [[1,2],[3,4]] == [[1,3],[2,4]]
-transpose :: [[a]] -> [[a]]
-transpose [] = []
-transpose ([]:_) = []
-transpose x = map head x : transpose (map tail x)
+-- | Computes the mean of a generic vector.
+--   Returns 0.0 for an empty vector.
+mean :: (G.Vector v Double) => v Double -> Double
+mean vec | G.null vec = 0
+         | otherwise  = G.sum vec / fromIntegral (G.length vec)
 
---   Centralizes a list of Doubles by subtracting the mean from each element.
---   The resulting list will have a mean of approximately zero.
---   Example: centralizeColumn [1.0, 2.0, 3.0] == [-1.0, 0.0, 1.0]
-centralizeColumn :: [Double] -> [Double]
-centralizeColumn xs = 
-  let m = mean xs
-  in map (\x -> x - m) xs
+-- | Computes the mean return (μ vector) for each asset (column-wise).
+--   Input: return matrix of shape (days × assets)
+--   Output: unboxed vector of asset-wise average returns.
+muVector :: ReturnMatrix -> U.Vector Double
+muVector rm =
+  let !cols = transpose rm
+  in U.generate (V.length cols) $ \j -> mean (cols V.! j)
 
---   Centralizes each column of a matrix independently.
---   Transposes the matrix, applies centralization to each column, then transposes back.
---   Example: centralizeMatrix [[1,2],[3,4]]
-centralizeMatrix :: ReturnMatrix -> ReturnMatrix
-centralizeMatrix mat = transpose $ map centralizeColumn (transpose mat)
-
---   Computes the sample covariance matrix of a return matrix.
---   The return matrix must be in the form of rows = days, columns = assets.
---   First centralizes the matrix, then computes Σ = (1 / (n - 1)) * Rᵗ * R.
---   Returns a square matrix with dimensions = number of assets.
---   Example: covarianceMatrix [[0.01, 0.02], [0.015, 0.025]] ≈ [[2.5e-05, 2.5e-05], [2.5e-05, 2.5e-05]]
-covarianceMatrix :: ReturnMatrix -> [[Double]]
-covarianceMatrix mat =
-  let r = centralizeMatrix mat
-      rt = transpose r
-      n = fromIntegral (length r)
-      denom = n - 1
-  in [ [ dotProduct xi yj / denom | yj <- rt ] | xi <- rt ]
-
---   Computes the annualized volatility of a portfolio.
---   Volatility is defined as σ = sqrt(wᵀ * Σ * w) * sqrt(252), where Σ is the covariance matrix and w is the weight vector.
---   Example: annualizedVolatility [[0.01, 0.02], [0.015, 0.025]] [0.5, 0.5] ≈ 0.01118
-annualizedVolatility :: ReturnMatrix -> Weights -> Double
-annualizedVolatility returns weights =
-  let sigma = covarianceMatrix returns
-      vol = sqrt $ dotProduct weights $ matrixVectorProduct sigma weights 
-  in vol * sqrt 252
-
---   Computes the annualized return of a portfolio.
---   Uses weighted average of asset returns, then multiplies by 252 to annualize. mean(R * w) * 252.
---   Example: annualizedReturn [[0.01, 0.02], [0.015, 0.025]] [0.5, 0.5] ≈ 0.50375
-annualizedReturn :: ReturnMatrix -> Weights -> Double
-annualizedReturn returns weights =
-  let rp = matrixVectorProduct returns weights
-      avg_rp = mean rp
-  in avg_rp * 252
-
---   Computes the Sharpe Ratio of a portfolio.
---   Defined as: Sharpe = (annualized return) / (annualized volatility)
---   Returns Nothing if the volatility is zero (to avoid division by zero).
---   Assumes a zero risk-free rate and daily returns.
---   Example: sharpeRatio [[0.01, 0.02], [0.03, 0.01]] [0.5, 0.5] ≈ Just 63.5
-sharpeRatio :: ReturnMatrix -> Weights -> Maybe Double
-sharpeRatio returns weights =
-  let vol = annualizedVolatility returns weights
-      ret = annualizedReturn returns weights
-  in if vol == 0
-        then Nothing
-        else Just (ret / vol)
+-- | Computes the sample covariance matrix (Σ) from a matrix of returns.
+--   Centralizes each column by subtracting the mean, then calculates:
+--     Σᵢⱼ = (Xᵢ ⋅ Xⱼ) / (n - 1)
+--   where Xᵢ is the centralized column vector for asset i.
+covarianceMatrix :: ReturnMatrix -> CovarianceMatrix
+covarianceMatrix returns =
+  let !r     = centralizeMatrix returns
+      !rt    = transpose r
+      nRows  = fromIntegral (V.length r) - 1
+      nCols  = V.length rt
+  in V.generate nCols $ \i ->
+       let xi = rt V.! i
+       in U.generate nCols $ \j ->
+            dotProductU xi (rt V.! j) / nRows
 
 
+----------------------------------------------------------------------
+-- Sharpe Ratio calculation
+----------------------------------------------------------------------
 
---   Computes the list of daily returns for a single stock.
---   Applies the formula: (p1 / p0) - 1 for each consecutive pair.
---   Example: dailyReturns [100, 105, 110] == [0.05, 0.0476...]
+-- | Computes the annualized Sharpe Ratio using precomputed mean (μ),
+--   covariance matrix (Σ), and a weight vector (w).
+--   Returns Nothing if portfolio volatility is zero.
+--   Formula:
+--     Sharpe = (μᵗ·w · 252) / (√(wᵗ·Σ·w) · √252)
+sharpeRatioFast :: U.Vector Double -> CovarianceMatrix -> Weights -> Maybe Double
+sharpeRatioFast mu sigma w
+  | U.length mu /= U.length w = Nothing
+  | V.length sigma /= U.length w = Nothing
+  | otherwise =
+      let !expectedReturn = dotProductU mu w
+          !σw             = matVecU sigma w
+          !variance       = dotProductU w σw
+          !epsilon        = 1e-8  -- stability threshold
+      in if variance < epsilon
+         then Nothing
+         else Just (expectedReturn / sqrt variance)
+
+
+----------------------------------------------------------------------
+-- Internal matrix helpers
+----------------------------------------------------------------------
+
+-- | Converts a single row of asset prices to daily returns.
+--   Each return is computed as: (pₜ₊₁ / pₜ) - 1
+--   Returns a row with one fewer element than the input.
 dailyReturns :: PricesRow -> ReturnsRow
-dailyReturns (p0:p1:rest) = ((p1 / p0) - 1) : dailyReturns (p1:rest)
-dailyReturns _            = []  -- Returns empty if fewer than two prices
+dailyReturns prices = U.generate (U.length prices - 1) $ \i ->
+  let p0 = prices U.! i
+      p1 = prices U.! (i + 1)
+  in (p1 / p0) - 1
 
---   Converts a matrix of stock prices into a matrix of daily returns.
---   Each inner list represents the price series of a stock.
---   The return for each day is calculated as: (p_t / p_{t-1}) - 1
---   The result contains one fewer value per stock than the input.
---   Example: pricesToReturns [[100, 105, 110], [200, 210, 220]] == [[0.05, 0.047619047619047616], [0.05, 0.047619047619047616]]
-pricesToReturns :: PriceMatrix -> ReturnMatrix
-pricesToReturns priceMatrix = transpose $ map dailyReturns $ transpose priceMatrix
+-- | Centralizes a column vector (zero-mean) by subtracting its mean.
+centralizeColumn :: ReturnsRow -> ReturnsRow
+centralizeColumn col = let m = mean col in U.map (\x -> x - m) col
+
+-- | Applies zero-mean centralization to each column of the return matrix.
+--   This is required before computing the covariance matrix.
+centralizeMatrix :: ReturnMatrix -> ReturnMatrix
+centralizeMatrix mat = V.map centralizeColumn (transpose mat)
+
+-- | Transposes a boxed vector of unboxed vectors.
+--   Converts rows to columns and vice versa.
+--   Input: Vector n × m
+--   Output: Vector m × n
+transpose :: U.Unbox a => V.Vector (U.Vector a) -> V.Vector (U.Vector a)
+transpose rows
+  | V.null rows = V.empty
+  | otherwise   =
+      let nCols = U.length (V.head rows)
+      in V.generate nCols $ \j ->
+           U.generate (V.length rows) $ \i -> (rows V.! i) U.! j
+
+----------------------------------------------------------------------
+-- Data transformation
+----------------------------------------------------------------------
+
+-- | Converts a list of lists (e.g. from CSV) into a price matrix.
+--   Each inner list becomes an unboxed row of the matrix.
+--   Used to transform raw parsed data into a structured format.
+toPriceMatrix :: [[Double]] -> PriceMatrix
+toPriceMatrix rows = V.fromList $ map U.fromList rows
+
+-- | Converts a matrix of prices (days × assets) to a matrix of returns.
+--   Each row of the output represents the returns between two consecutive days.
+--   Output will have one fewer row than the input.
+priceMatrixToReturns :: PriceMatrix -> ReturnMatrix
+priceMatrixToReturns pm
+  | V.length pm < 2 = V.empty
+  | otherwise =
+      V.zipWith
+        (\prev next -> U.zipWith (\p0 p1 -> (p1 / p0) - 1) prev next)
+        pm
+        (V.tail pm)
