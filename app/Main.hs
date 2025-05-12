@@ -1,18 +1,34 @@
 module Main where
 
 import SharpeOptimization.Statistics
+import Text.Printf (printf)
 
 main :: IO ()
 main = do
-  putStrLn "Produto escalar:"
-  print $ matrix_line_multiply [1,2,3] [4,5,6]  -- 32.0
+  let testCases =
+        [ ("Caso 1: carteira equilibrada", returns1, weights1)
+        , ("Caso 2: ativos idênticos", returns2, weights2)
+        , ("Caso 3: carteira negativa", returns3, weights3)
+        , ("Caso 4: ativo volátil concentrado", returns4, weights4)
+        ]
 
-  putStrLn "\nMatriz × vetor:"
-  let mat1 = [[1,0,2], [0,3,-1]]
-      vec1 = [4,5,6]
-  print $ matrix_multiplied_by_vector mat1 vec1  -- [16.0, 9.0]
+  mapM_ runTest testCases
 
-  putStrLn "\nVetor × matriz:"
-  let vec2 = [1,2]
-      mat2 = [[3,4,5], [6,7,8]]
-  print $ matrix_multiplied_by_vector (transpose mat2) vec2  -- [15.0, 18.0, 21.0]
+  where
+    runTest (label, returns, weights) = do
+      putStrLn $ "\n🔹 " ++ label
+      case sharpeRatio returns weights of
+        Just sr -> printf "Sharpe Ratio: %.6f\n" sr
+        Nothing -> putStrLn "Sharpe Ratio: indefinido (volatilidade zero)"
+
+    returns1 = [[0.01, 0.02], [0.02, 0.03], [0.015, 0.025]]
+    weights1 = [0.5, 0.5]
+
+    returns2 = [[0.02, 0.02], [0.02, 0.02], [0.02, 0.02]]
+    weights2 = [0.5, 0.5]
+
+    returns3 = [[-0.01, -0.02], [-0.03, -0.01], [-0.02, -0.03]]
+    weights3 = [0.5, 0.5]
+
+    returns4 = [[0.10, 0.01], [-0.10, 0.01], [0.10, 0.01]]
+    weights4 = [1.0, 0.0]
