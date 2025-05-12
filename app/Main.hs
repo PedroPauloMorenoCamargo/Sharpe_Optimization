@@ -1,34 +1,37 @@
 module Main where
 
-import SharpeOptimization.Statistics
-import Text.Printf (printf)
+import SharpeOptimization.DataLoader
+import SharpeOptimization.Simulate 
+import SharpeOptimization.Statistics 
+
+import Control.Monad.Trans.Except (runExceptT)
+import System.Environment (getArgs)
+import Control.Monad.IO.Class (liftIO)
 
 main :: IO ()
 main = do
-  let testCases =
-        [ ("Caso 1: carteira equilibrada", returns1, weights1)
-        , ("Caso 2: ativos idênticos", returns2, weights2)
-        , ("Caso 3: carteira negativa", returns3, weights3)
-        , ("Caso 4: ativo volátil concentrado", returns4, weights4)
-        ]
+  args <- getArgs
+  let path = case args of
+        (p:_) -> p
+        []    -> "data/training.csv"
 
-  mapM_ runTest testCases
+  putStrLn $ "📂 Loading data from: " ++ path
 
-  where
-    runTest (label, returns, weights) = do
-      putStrLn $ "\n🔹 " ++ label
-      case sharpeRatio returns weights of
-        Just sr -> printf "Sharpe Ratio: %.6f\n" sr
-        Nothing -> putStrLn "Sharpe Ratio: indefinido (volatilidade zero)"
+  result <- runExceptT $ do
+    -- Step 1: Load stock names and price matrix from CSV
+    (stockNames, priceMatrix) <- loadStockData path
 
-    returns1 = [[0.01, 0.02], [0.02, 0.03], [0.015, 0.025]]
-    weights1 = [0.5, 0.5]
+    -- Step 2: Convert prices to returns
+    let returnMatrix = pricesToReturns priceMatrix
 
-    returns2 = [[0.02, 0.02], [0.02, 0.02], [0.02, 0.02]]
-    weights2 = [0.5, 0.5]
+    -- Step 3: Run simulation using 5 assets and 100 random portfolios
+    liftIO $ putStrLn "🚀 Starting portfolio simulation..."
+    simulateBestSharpe stockNames returnMatrix 28    10000
 
-    returns3 = [[-0.01, -0.02], [-0.03, -0.01], [-0.02, -0.03]]
-    weights3 = [0.5, 0.5]
-
-    returns4 = [[0.10, 0.01], [-0.10, 0.01], [0.10, 0.01]]
-    weights4 = [1.0, 0.0]
+  case result of
+    Left err -> putStrLn $ "❌ Error: " ++ err
+    Right (sharpe, names, weights) -> do
+      putStrLn "\n✅ Best Portfolio Found:"
+      putStrLn $ "📈 Sharpe Ratio: " ++ show sharpe
+      putStrLn $ "🏦 Stocks:       " ++ show names
+      putStrLn $ "⚖️  Weights:      " ++ show weights

@@ -3,7 +3,8 @@
 module SharpeOptimization.Statistics ( 
     combinations,
     selectByIndexes,
-    sharpeRatio
+    sharpeRatio,
+    pricesToReturns
   ) where
 
 import SharpeOptimization.Types
@@ -124,3 +125,20 @@ sharpeRatio returns weights =
   in if vol == 0
         then Nothing
         else Just (ret / vol)
+
+
+
+--   Computes the list of daily returns for a single stock.
+--   Applies the formula: (p1 / p0) - 1 for each consecutive pair.
+--   Example: dailyReturns [100, 105, 110] == [0.05, 0.0476...]
+dailyReturns :: PricesRow -> ReturnsRow
+dailyReturns (p0:p1:rest) = ((p1 / p0) - 1) : dailyReturns (p1:rest)
+dailyReturns _            = []  -- Returns empty if fewer than two prices
+
+--   Converts a matrix of stock prices into a matrix of daily returns.
+--   Each inner list represents the price series of a stock.
+--   The return for each day is calculated as: (p_t / p_{t-1}) - 1
+--   The result contains one fewer value per stock than the input.
+--   Example: pricesToReturns [[100, 105, 110], [200, 210, 220]] == [[0.05, 0.047619047619047616], [0.05, 0.047619047619047616]]
+pricesToReturns :: PriceMatrix -> ReturnMatrix
+pricesToReturns priceMatrix = transpose $ map dailyReturns $ transpose priceMatrix

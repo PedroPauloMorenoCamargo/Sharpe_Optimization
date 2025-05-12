@@ -63,3 +63,4 @@ parseDouble s =
   case reads s of
     [(x, "")] -> return x
     _         -> throwE $ "Invalid numeric value: " ++ s
+  
