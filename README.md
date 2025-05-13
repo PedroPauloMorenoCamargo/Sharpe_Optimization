@@ -56,7 +56,7 @@ Parallelism strategy:
 
 ---
 
-## 3. Project layout
+## 3. Project Layout
 
 ```text
 app/Main.hs                  CLI, IO & wall‑clock timing
@@ -89,7 +89,7 @@ $ make download-data       # if you want to get another period change variable i
 $ cabal build              # or: stack build
 ```
 
-## 5. Running the simulation
+## 5. Running the Simulation
 
 How to run:
 
@@ -108,7 +108,7 @@ Number of assets to choose (k) [default: 25]:
 Number of trials per combination (n) [default: 1000]:
 Parallel? (1 = yes, 0 = no) [default: 1]:
 ```
-## 6. Expected output & benchmarks
+## 6. Expected Output & Benchmarks
 ```
 ⏳ Running simulation over 25-asset portfolios (50 trials each)...
 
@@ -160,13 +160,13 @@ Parallel? (1 = yes, 0 = no) [default: 1]:
 - **Best Sharpe Ratio (2024)**: Sharpe ratios range between **0.2979** and **0.3609**, indicating strong portfolio selection during training.
 - **Sharpe Ratio (2025)**: Significant drop in Sharpe ratios for the test period (from **4.32e-3** to **-3.79e-2**), indicating poor generalization.
 - **Optimization Time**: Optimization time improves with 8 cores (**113 seconds**) vs. 4 cores (**162-170 seconds**), showing efficient parallel scaling.
-- 
+
 ### Optimal Portfolio Visualization:
 The chart below shows the **optimal portfolio weights** based on the highest Sharpe ratio of **0.3609** found during the simulation:
 
 ![Optimal Portfolio Weights](img/optimal_portfolio_weights.png)
 
-## 8. AI usage disclosure
+## 8. AI Usage Disclosure
 
 * Creating and Optimizing Functions;
 * Writing Readme
