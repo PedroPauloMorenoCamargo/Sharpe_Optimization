@@ -22,7 +22,7 @@ Extras implemented for **bonus marks**:
 
 ---
 
-## 1  Objective
+## 1. Objective
 
 Find the portfolio **weight vector** $w$ that maximises the **Sharpe Ratio**
 
@@ -44,7 +44,7 @@ Because the optimisation is non‑convex we perform an **exhaustive simulation**
 
 Total evaluations ≈ **142 million**.
 
-## 2  Why functional? Why parallel?
+## 2. Why functional? Why parallel?
 
 * **Purity** — deterministic functions allow local reasoning and automatic memoisation.
 * **Parallel safety** — no locks, no races.
@@ -57,7 +57,7 @@ Parallelism strategy:
 
 ---
 
-## 3  Project layout
+## 3. Project layout
 
 ```text
 app/Main.hs                  CLI, IO & wall‑clock timing
@@ -73,7 +73,7 @@ data/
 Makefile                     Turn‑key venv + data + clean targets
 ```
 
-## 4  Installation
+## 4. Installation
 
 ### 4.1  Quick start
 
@@ -90,7 +90,7 @@ $ make download-data       # if you want to get another period change variable i
 $ cabal build              # or: stack build
 ```
 
-## 5  Running the simulation
+## 5. Running the simulation
 
 How to run:
 
@@ -109,7 +109,7 @@ Number of assets to choose (k) [default: 25]:
 Number of trials per combination (n) [default: 1000]:
 Parallel? (1 = yes, 0 = no) [default: 1]:
 ```
-## 6  Expected output & benchmarks
+## 6. Expected output & benchmarks
 ```
 ⏳ Running simulation over 25-asset portfolios (50 trials each)...
 
@@ -148,7 +148,7 @@ Parallel? (1 = yes, 0 = no) [default: 1]:
 ✅ New Sharpe Ratio on result dataset: -2.3305575327931777e-2
 😕 Worse or equal Sharpe in result dataset.
 ```
-## 7 Results
+## 7. Results
 
 | Cores  | **Best Sharpe Ratio (2024_2nd_Semester)** | **Optimization Time (s)** | **Best Sharpe Ratio (2025_1st_Trimester)** | **Comparison**                          |
 | -------------- | ----------------------- | ------------------------- | --------------------------------- | --------------------------------------- |
@@ -162,7 +162,7 @@ Parallel? (1 = yes, 0 = no) [default: 1]:
 - **Sharpe Ratio (2025)**: Significant drop in Sharpe ratios for the test period (from **4.32e-3** to **-3.79e-2**), indicating poor generalization.
 - **Optimization Time**: Optimization time improves with 8 cores (**113 seconds**) vs. 4 cores (**162-170 seconds**), showing efficient parallel scaling.
 
-## 8  AI usage disclosure
+## 8. AI usage disclosure
 
 * Creating and Optimizing Functions;
 * Writing Readme
