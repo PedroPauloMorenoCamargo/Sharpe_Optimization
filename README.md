@@ -150,12 +150,12 @@ Parallel? (1 = yes, 0 = no) [default: 1]:
 ```
 ## 7 Results
 
-| **Test Case**  | **Sharpe Ratio (Best)** | **Optimization Time (s)** | **Sharpe Ratio (Result Dataset)** | **Comparison**                          |
+| Cores  | **Best Sharpe Ratio (2024_2nd_Semester)** | **Optimization Time (s)** | **Best Sharpe Ratio (2025_1st_Trimester)** | **Comparison**                          |
 | -------------- | ----------------------- | ------------------------- | --------------------------------- | --------------------------------------- |
-| **1. 4 Cores** | 0.31707951483423114     | 162.4                     | 4.324464935386083e-3              | Worse or equal Sharpe in result dataset |
-| **2. 4 Cores** | 0.33898489256815745     | 170.43                    | -1.7167632267105295e-2            | Worse or equal Sharpe in result dataset |
-| **3. 8 Cores** | 0.29796031386257094     | 112.63                    | -1.7389490189320743e-4            | Worse or equal Sharpe in result dataset |
-| **4. 8 Cores** | 0.36091653571516474     | 113.99                    | -3.790277278120213e-2             | Worse or equal Sharpe in result dataset |
+| 4  | 0.31707951483423114     | 162.4                     | 4.324464935386083e-3              | Worse or equal Sharpe in result dataset |
+|  4  | 0.33898489256815745     | 170.43                    | -1.7167632267105295e-2            | Worse or equal Sharpe in result dataset |
+|  8  | 0.29796031386257094     | 112.63                    | -1.7389490189320743e-4            | Worse or equal Sharpe in result dataset |
+| 8 | 0.36091653571516474     | 113.99                    | -3.790277278120213e-2             | Worse or equal Sharpe in result dataset |
 
 
 
