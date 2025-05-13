@@ -41,7 +41,7 @@ better x@(Just (s1,_,_)) y@(Just (s2,_,_))
   | otherwise                 = x
 
 -- | Evaluate a single weight vector and update the best Sharpe.
-stepSharpe :: U.Vector Double -> CovarianceMatrix -> [String] -> Weights -> Maybe Best -> Maybe Best
+stepSharpe :: U.Vector Double -> CovarianceMatrix -> Stocks -> Weights -> Maybe Best -> Maybe Best
 stepSharpe μ σ names w acc =
   case sharpeRatioFast μ σ w of
     Nothing  -> acc
@@ -50,7 +50,7 @@ stepSharpe μ σ names w acc =
 -- | Evaluate all weights for a single combo.
 comboBest :: U.Vector Double     -- ^ μ all
           -> CovarianceMatrix    -- ^ Σ all
-          -> [String]            -- ^ all names
+          -> Stocks            -- ^ all names
           -> [Int]               -- ^ indices in this combo
           -> [Weights]           -- ^ candidate weights list
           -> Maybe Best
@@ -67,14 +67,14 @@ sliceSigma idxs σ =
   in  V.fromList (map pickRow idxs)
 
 -- | Process a single combination, returning the best Sharpe and new RNG.
-evalCombination :: U.Vector Double -> CovarianceMatrix -> [String] -> Int -> Int -> StdGen -> [Int] -> (Maybe Best, StdGen)
+evalCombination :: U.Vector Double -> CovarianceMatrix -> Stocks -> Int -> Int -> StdGen -> [Int] -> (Maybe Best, StdGen)
 evalCombination μ σ names n k g idxs =
   let (ws, g') = randomWeightVectorsPure n k g
       result   = comboBest μ σ names idxs ws
   in (result, g')
 
 -- | Process all combinations sequentially.
-evalAllCombinations :: U.Vector Double -> CovarianceMatrix -> [String] -> Int -> Int -> StdGen -> [[Int]] -> (Maybe Best, StdGen)
+evalAllCombinations :: U.Vector Double -> CovarianceMatrix -> Stocks -> Int -> Int -> StdGen -> [[Int]] -> (Maybe Best, StdGen)
 evalAllCombinations _ _ _ _ _ g [] = (Nothing, g)
 evalAllCombinations μ σ names n k g (c:cs) =
   let (r1, g1) = evalCombination μ σ names n k g c
@@ -92,7 +92,7 @@ evalAllCombinations μ σ names n k g (c:cs) =
 simulateBestSharpeSequential
   :: ReturnMatrix      -- ^ R : daily returns
   -> CovarianceMatrix  -- ^ Σ : covariance matrix
-  -> [String]          -- ^ asset names
+  -> Stocks            -- ^ asset names
   -> Int               -- ^ k
   -> Int               -- ^ n
   -> StdGen            -- ^ random generator in

@@ -2,16 +2,16 @@
 {-# LANGUAGE BangPatterns #-}
 
 module SharpeOptimization.Statistics
-  ( combinations
-  , selectByIndexesU
-  , mean
-  , muVector
-  , covarianceMatrix
-  , dotProductU
-  , matVecU
-  , sharpeRatioFast
-  , priceMatrixToReturns
-  , toPriceMatrix
+  ( combinations,
+    selectByIndexesU,
+    mean,
+    muVector,
+    covarianceMatrix,
+    dotProductU,
+    matVecU,
+    sharpeRatioFast,
+    priceMatrixToReturns,
+    toPriceMatrix
   ) where
 
 import SharpeOptimization.Types
@@ -101,7 +101,7 @@ covarianceMatrix returns =
 --   Returns Nothing if portfolio volatility is zero.
 --   Formula:
 --     Sharpe = (μᵗ·w · 252) / (√(wᵗ·Σ·w) · √252)
-sharpeRatioFast :: U.Vector Double -> CovarianceMatrix -> Weights -> Maybe Double
+sharpeRatioFast :: U.Vector Double -> CovarianceMatrix -> Weights -> Maybe Sharpe
 sharpeRatioFast mu sigma w
   | U.length mu /= U.length w = Nothing
   | V.length sigma /= U.length w = Nothing

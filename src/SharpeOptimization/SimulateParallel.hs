@@ -10,10 +10,16 @@ import SharpeOptimization.SimulateSequential
 import           System.Random (StdGen, split)
 import           Control.Parallel.Strategies
 import           GHC.Conc (numCapabilities)
-
+-------------------------------------------------------------------------
+-- Simulate the best Sharpe ratio in parallel
+-- This function generates a generator for each combination of assets
+-- and then generates n random weight vectors for each combination.
+-- It evaluates the Sharpe ratio for each weight vector and keeps track
+-- of the best one found.
+-- The function returns the best Sharpe ratio found and the updated generator.
 -----------------------------------------------------------------------
 simulateBestSharpeParallel
-  :: ReturnMatrix -> CovarianceMatrix -> [String]
+  :: ReturnMatrix -> CovarianceMatrix -> Stocks
   -> Int -> Int -> StdGen -> (Maybe Best, StdGen)
 simulateBestSharpeParallel retM σ names k n gen0 =
   let μ        = muVector retM
