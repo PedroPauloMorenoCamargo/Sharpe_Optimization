@@ -55,55 +55,112 @@ Parallelism strategy:
 
 ## 3. Project Layout
 
-### Architecture
-```text
-app/Main.hs 
+### Architecture Overview
+
+**Directory Structure:**
+
+app/Main.hs  – 📋 CLI orchestration, IO, and coordination
 
 src/SharpeOptimization/
-├── **DataLoader.hs** 
-├── **Statistics.hs** 
-├── **Weights.hs** 
-├── **SimulateSequential.hs** 
-├── **SimulateParallel.hs**
-└── **Types.hs** 
+├── 📄 **DataLoader.hs**        – CSV ingestion and validation
+├── 📊 **Statistics.hs**        – Mathematical operations: μ, Σ, Sharpe
+├── 🎲 **Weights.hs**           – Random constrained portfolio generation
+├── 🧮 **SimulateSequential.hs** – Exhaustive pure single-threaded simulation
+├── ⚙️  **SimulateParallel.hs**   – Parallelized search wrapper
+└── 🧾 **Types.hs**             – Type aliases and core data definitions
 
-data/download\_data.py 
+data/download\_data.py – 🗃 Fetches DJIA prices from Yahoo Finance
+Makefile              – 🛠 Setup, fetch, and cleanup automation
 
-Makefile 
-```
 ---
 
-**Main.hs**
-Handles all user interaction, input/output, and simulation coordination. It prompts for parameters like CSV paths, number of assets (k), and trials (n). It delegates data loading to `DataLoader`, calculates statistics via `Statistics`, and dispatches the simulation to either the sequential or parallel module depending on the user's choice. It also measures execution time and performs out-of-sample evaluation using the result CSV.
+### Module Descriptions
 
-**DataLoader.hs**
-Responsible for reading and validating input CSV files containing price data. It uses `ExceptT IO` to catch and propagate I/O and parsing errors cleanly. It trims the date column, checks column consistency across rows, and ensures all values are numeric. This module cleanly separates file I/O from the pure computation pipeline.
+#### 💻 Main.hs
 
-**Statistics.hs**
-Implements all core mathematical functions required by the simulation. This includes transforming prices to daily returns, computing the mean return vector (μ), building the sample covariance matrix (Σ), and computing the Sharpe ratio efficiently. Also includes matrix-vector operations like dot product and matrix multiplication, designed to work with unboxed vectors for performance.
+Coordinates the entire simulation:
 
-**Weights.hs**
-Generates constrained random portfolios using rejection sampling. It ensures all weights are non-zero, normalized to sum to 1, and capped at a maximum of 20% per asset. This module is purely functional and deterministic given a random seed, and it returns batches of valid weight vectors alongside the updated random generator.
+* Prompts user for inputs (CSV paths, `k`, `n`, parallel flag)
+* Loads training data using `DataLoader`
+* Computes μ and Σ using `Statistics`
+* Chooses simulation mode: sequential or parallel
+* Measures execution time
+* Re-evaluates the best portfolio on test CSV
 
-**SimulateSequential.hs**
-Performs the exhaustive search over all combinations of k assets and their associated weight vectors using a single thread. It uses the μ and Σ from `Statistics` and weights from `Weights` to evaluate the Sharpe ratio of each portfolio and tracks the best result found. All logic is pure and designed to be thread-safe via explicit random state threading.
+#### 📄 DataLoader.hs
 
-**SimulateParallel.hs**
-Wraps the sequential simulation logic in parallel execution. It splits the list of combinations and the RNG state into disjoint chunks, maps each chunk in parallel using `parListChunk`, and folds the results into a single best portfolio using a custom `better` function. This module preserves determinism while improving performance on multi-core systems.
+Handles all CSV processing:
 
-**Types.hs**
-Centralizes all shared type definitions used across modules. It defines convenient aliases for prices, returns, weight vectors, and matrices using boxed and unboxed vectors. It also defines the `Best` result type, which encapsulates the Sharpe ratio, selected asset names, and weight vector.
+* Reads training and test CSVs
+* Drops the date column
+* Validates numeric content and consistent widths
+* Returns `(StockNames, [[Double]])` safely via `ExceptT IO`
 
-**download\_data.py**
-Python script that automates downloading historical stock prices from Yahoo Finance using the `yfinance` library. It outputs two CSV files: one for training and one for testing, each covering configurable date ranges. Used to populate `data/training.csv` and `data/result.csv`.
+#### 📊 Statistics.hs
 
-**Makefile**
-Automates environment setup and data preparation. It defines targets for setting up a virtual environment, installing Python dependencies, downloading stock data, and cleaning up generated files. Supports environment customization through `TRAIN_*` and `TEST_*` variables.
+Implements pure numerical operations:
+
+* prices → returns transformation
+* mean vector μ computation
+* sample covariance matrix Σ
+* vector ops: dot product, matrix × vector
+* `sharpeRatioFast` computes annualized Sharpe ratio
+
+#### 🎲 Weights.hs
+
+Generates random, valid portfolio weights:
+
+* Rejection sampling enforces: each weight ≤ 20% and ∑wᵢ ≈ 1
+* Deterministic and pure given a StdGen
+* Returns `[Weights]` and updated random generator
+
+#### ➡️ SimulateSequential.hs
+
+Single-threaded simulation backend:
+
+* Exhaustively iterates over all combinations of `k` assets
+* Evaluates `n` portfolios per combo using Sharpe
+* Tracks the best result (Sharpe, names, weights)
+* Purely functional; threads random generator state manually
+
+#### 🔄 SimulateParallel.hs
+
+Parallel version of the simulation loop:
+
+* Splits all combos across `numCapabilities × 4` chunks
+* Each chunk evaluated with `parListChunk rdeepseq`
+* Results are folded using a custom `better` reducer
+* Ensures deterministic output with increased performance
+
+#### 🧾 Types.hs
+
+Central module for type safety and clarity:
+
+* Aliases like `PriceMatrix`, `ReturnMatrix`, `Weights`
+* `Best` result type = `(Sharpe, Stocks, Weights)`
+* Ensures type consistency across all math-heavy modules
+
+#### 🗃 download\_data.py
+
+Python helper tool for data acquisition:
+
+* Uses `yfinance` to pull DJIA stock closes
+* Saves to `data/training.csv` and `data/result.csv`
+* Date ranges configurable via CLI or Makefile
+
+#### 🛠 Makefile
+
+Automation entry point:
+
+* Sets up Python virtual environment
+* Installs `yfinance`, `pandas`
+* Downloads and saves training/testing datasets
+* Provides `clean-data`, `clean-env`, `clean-all` targets
 
 ---
 
 ### Simulation Flow
-
+```text
 CSV → prices → returns → μ, Σ
   │
   ├─ combinations(k, 30)
@@ -113,7 +170,7 @@ CSV → prices → returns → μ, Σ
   │  └─ keep best (Sharpe, names, w)
   ↓
 best portfolio → re‑evaluated on test CSV
-
+```
 **Step-by-step explanation:**
 
 1. **CSV Load (DataLoader.hs)**: The program reads a CSV file of stock closing prices, validates the data, and returns a matrix of prices for each stock.
