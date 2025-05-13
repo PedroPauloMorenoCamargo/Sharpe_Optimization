@@ -58,7 +58,7 @@ Parallelism strategy:
 ### Architecture Overview
 
 **Directory Structure:**
-
+```text
 app/Main.hs  – 📋 CLI orchestration, IO, and coordination
 
 src/SharpeOptimization/
@@ -71,91 +71,135 @@ src/SharpeOptimization/
 
 data/download\_data.py – 🗃 Fetches DJIA prices from Yahoo Finance
 Makefile              – 🛠 Setup, fetch, and cleanup automation
-
+```
 ---
 
 ### Module Descriptions
 
-#### 💻 Main.hs
-
-Coordinates the entire simulation:
-
-* Prompts user for inputs (CSV paths, `k`, `n`, parallel flag)
-* Loads training data using `DataLoader`
-* Computes μ and Σ using `Statistics`
-* Chooses simulation mode: sequential or parallel
-* Measures execution time
-* Re-evaluates the best portfolio on test CSV
-
 #### 📄 DataLoader.hs
 
-Handles all CSV processing:
+Handles all CSV processing and encapsulates I/O safely:
 
-* Reads training and test CSVs
-* Drops the date column
-* Validates numeric content and consistent widths
-* Returns `(StockNames, [[Double]])` safely via `ExceptT IO`
+* Reads training (2nd-Semester-2024) and test (1st-Trimester-2025) datasets from CSV files.
+* Drops the first column (typically a "Date" field) to isolate numeric stock prices.
+* Validates each line to ensure column consistency and that all values are numeric.
+* Wraps all I/O, parsing, and validation using `ExceptT IO`.
+* Returns stock names and a matrix of price data as a tuple: `(StockNames, [[Double]])`.
 
 #### 📊 Statistics.hs
 
-Implements pure numerical operations:
+Implements all core numerical computations in pure form:
 
-* prices → returns transformation
-* mean vector μ computation
-* sample covariance matrix Σ
-* vector ops: dot product, matrix × vector
-* `sharpeRatioFast` computes annualized Sharpe ratio
+- **`toPriceMatrix :: [[Double]] -> PriceMatrix`**  
+  Converts a list of lists from CSV parsing into a boxed matrix of unboxed price vectors.
 
+- **`priceMatrixToReturns :: PriceMatrix -> ReturnMatrix`**  
+  Converts price matrix into a matrix of daily returns:  
+  each return is calculated as `(pₜ₊₁ / pₜ) - 1` for each asset.
+
+- **`mean :: (G.Vector v Double) => v Double -> Double`**  
+  Computes the arithmetic mean of a generic vector.  
+  Used in μ and Σ calculations.
+
+- **`muVector :: ReturnMatrix -> U.Vector Double`**  
+  Computes the mean return (μ) for each asset (column-wise).
+
+- **`covarianceMatrix :: ReturnMatrix -> CovarianceMatrix`**  
+  Computes the sample covariance matrix (Σ) by:
+  - centralizing each column (subtracting its mean),
+  - computing pairwise dot products,
+  - dividing by `n - 1`.
+
+- **`dotProductU :: U.Vector Double -> U.Vector Double -> Double`**  
+  Computes the dot product between two unboxed vectors.  
+  Used heavily in Sharpe ratio and matrix algebra.
+
+- **`matVecU :: V.Vector (U.Vector Double) -> U.Vector Double -> U.Vector Double`**  
+  Multiplies a boxed matrix of unboxed vectors by a column vector.  
+  Used in variance computation for the Sharpe ratio.
+
+- **`sharpeRatioFast :: U.Vector Double -> CovarianceMatrix -> Weights -> Maybe Sharpe`**  
+  Computes the **annualized Sharpe ratio**:
+  Returns `Nothing` if variance is near-zero (numerical stability safeguard).
+
+- **`selectByIndexesU :: [Int] -> U.Vector a -> U.Vector a`**  
+  Utility to extract a subvector by index list.  
+  Used to reduce μ and Σ to k-dimensional subspaces.
+
+- **`transpose :: V.Vector (U.Vector a) -> V.Vector (U.Vector a)`**  
+  Transposes a matrix of unboxed vectors (rows ↔ columns).  
+  Used for column-wise statistics like μ and Σ.
+
+- **`centralizeMatrix :: ReturnMatrix -> ReturnMatrix`**  
+  Centralizes each column of the return matrix (mean = 0).  
+  Required before computing Σ.
+  
 #### 🎲 Weights.hs
 
-Generates random, valid portfolio weights:
+Generates random portfolio weights subject to constraints:
 
-* Rejection sampling enforces: each weight ≤ 20% and ∑wᵢ ≈ 1
-* Deterministic and pure given a StdGen
-* Returns `[Weights]` and updated random generator
+* Uses rejection sampling to enforce valid portfolios:
+
+  * All weights ≥ 0, ∑wᵢ ≈ 1, and no weight > 20%.
+* All logic is purely functional and deterministic when given a `StdGen`.
+* Returns a list of weight vectors along with the updated random generator.
+* Ensures compliance with problem constraints for every trial portfolio.
 
 #### ➡️ SimulateSequential.hs
 
-Single-threaded simulation backend:
+Implements the exhaustive search engine for simulation in a single thread:
 
-* Exhaustively iterates over all combinations of `k` assets
-* Evaluates `n` portfolios per combo using Sharpe
-* Tracks the best result (Sharpe, names, weights)
-* Purely functional; threads random generator state manually
+* Enumerates all combinations of `k` out of 30 DJIA stocks (≈ 142k portfolios).
+* For each combination, generates `n` valid random weights.
+* Computes the Sharpe ratio using the subsets of μ and Σ from `Statistics`.
+* Tracks the highest-performing portfolio across all evaluated combinations.
+* Threads random generator state manually to ensure reproducibility.
+* Entirely pure and referentially transparent.
 
 #### 🔄 SimulateParallel.hs
 
-Parallel version of the simulation loop:
+Parallel backend for simulation with multi-core optimization:
 
-* Splits all combos across `numCapabilities × 4` chunks
-* Each chunk evaluated with `parListChunk rdeepseq`
-* Results are folded using a custom `better` reducer
-* Ensures deterministic output with increased performance
+* Splits all combinations into `numCapabilities × 4` chunks for load balancing.
+* For each chunk:
+
+  * Assigns an independent random generator (via `splitMany`).
+  * Evaluates all weight trials in parallel with `parListChunk` and `rdeepseq`.
+* Sharpe ratios are computed as in the sequential path.
+* All intermediate results are reduced using a custom `better` comparator.
+* Fully deterministic, while significantly improving performance on multi-core machines.
 
 #### 🧾 Types.hs
 
-Central module for type safety and clarity:
+Defines core type aliases to unify the project interface:
 
-* Aliases like `PriceMatrix`, `ReturnMatrix`, `Weights`
-* `Best` result type = `(Sharpe, Stocks, Weights)`
-* Ensures type consistency across all math-heavy modules
+* `PriceMatrix`, `ReturnMatrix`, and `CovarianceMatrix` are declared for clarity.
+* Uses `Vector` for outer structures and `U.Vector` for inner rows (performance).
+* `Weights` is an unboxed vector of Doubles.
+* `Best` encapsulates the best portfolio result: `(Sharpe, Stocks, Weights)`.
+* Central to the consistency and readability of all math and logic.
 
 #### 🗃 download\_data.py
 
-Python helper tool for data acquisition:
+Fetches historical stock price data using Python and `yfinance`:
 
-* Uses `yfinance` to pull DJIA stock closes
-* Saves to `data/training.csv` and `data/result.csv`
-* Date ranges configurable via CLI or Makefile
+* Downloads daily close prices for the 30 DJIA stocks.
+* Saves training and testing datasets to `data/training.csv` and `data/result.csv`.
+* Dates for training and testing periods are configurable via command-line args or Makefile variables.
+* Used as the primary data source for the simulation pipeline.
 
 #### 🛠 Makefile
 
-Automation entry point:
+Facilitates development, testing, and environment setup:
 
-* Sets up Python virtual environment
-* Installs `yfinance`, `pandas`
-* Downloads and saves training/testing datasets
-* Provides `clean-data`, `clean-env`, `clean-all` targets
+* Automates the creation of a Python virtual environment.
+* Installs required Python dependencies: `yfinance`, `pandas`.
+* Defines reusable commands for downloading data and cleaning up generated files.
+* Includes targets:
+
+  * `python-setup` — setup venv and install dependencies
+  * `download-data` — run data downloader with configured dates
+  * `clean-data`, `clean-env`, `clean-all` — housekeeping targets
 
 ---
 
@@ -175,7 +219,7 @@ best portfolio → re‑evaluated on test CSV
 
 1. **CSV Load (DataLoader.hs)**: The program reads a CSV file of stock closing prices, validates the data, and returns a matrix of prices for each stock.
 2. **Transform to Returns (Statistics.hs)**: Converts the price matrix to a return matrix by calculating daily percentage changes.
-3. **Compute μ and Σ (Statistics.hs)**: Computes the mean returns vector μ and the sample covariance matrix Σ from the return matrix.
+3. **Compute μ and Σ (Statistics.hs)**: Computes the Global mean returns vector μ and sample covariance matrix Σ from the return matrix.
 4. **Generate Combinations (Statistics.hs)**: All 25-stock subsets (out of 30) are enumerated using combinatorics.
 5. **Generate Weights (Weights.hs)**: For each combination, 1000 weight vectors are generated that respect the constraints.
 6. **Evaluate Portfolios (Simulate\[Sequential|Parallel].hs)**: Each weight vector is evaluated via the Sharpe formula. The best-performing one (highest Sharpe ratio) is tracked.
@@ -281,7 +325,8 @@ The chart below shows the **optimal portfolio weights** based on the highest Sha
 
 ## 8. AI Usage Disclosure
 
-* Creating and Optimizing Functions;
+* Creating and Optimizing Functions
 * Writing Readme
 * Cabal Structure
+* Commenting Code
 
