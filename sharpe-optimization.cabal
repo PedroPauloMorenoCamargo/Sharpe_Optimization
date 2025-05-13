@@ -15,7 +15,8 @@ library
   import:              warnings
   exposed-modules:     SharpeOptimization.Types
                      , SharpeOptimization.DataLoader
-                     , SharpeOptimization.Simulate
+                     , SharpeOptimization.SimulateSequential
+                     , SharpeOptimization.SimulateParallel
                      , SharpeOptimization.Statistics
                      , SharpeOptimization.Weights
   other-modules:       

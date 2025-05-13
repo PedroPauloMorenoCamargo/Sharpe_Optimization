@@ -7,6 +7,7 @@ module SharpeOptimization.Types
   , Weights
   , PricesRow , ReturnsRow
   , PriceMatrix , ReturnMatrix , CovarianceMatrix
+  , Best
   ) where
 
 import qualified Data.Vector          as V
@@ -22,3 +23,7 @@ type ReturnsRow = U.Vector Return       -- days → return per asset
 type PriceMatrix     = V.Vector PricesRow      -- boxed outer / unboxed inner
 type ReturnMatrix    = V.Vector ReturnsRow
 type CovarianceMatrix = V.Vector (U.Vector Double)
+
+
+-- | Best Sharpe (Sharpe, asset names, weight vector)
+type Best = (Double, [String], Weights)

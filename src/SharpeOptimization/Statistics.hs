@@ -18,7 +18,6 @@ import SharpeOptimization.Types
 import qualified Data.Vector         as V
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Generic as G
-import           Data.List (subsequences)
 
 ----------------------------------------------------------------------
 -- Combinatorics
@@ -119,15 +118,6 @@ sharpeRatioFast mu sigma w
 ----------------------------------------------------------------------
 -- Internal matrix helpers
 ----------------------------------------------------------------------
-
--- | Converts a single row of asset prices to daily returns.
---   Each return is computed as: (pₜ₊₁ / pₜ) - 1
---   Returns a row with one fewer element than the input.
-dailyReturns :: PricesRow -> ReturnsRow
-dailyReturns prices = U.generate (U.length prices - 1) $ \i ->
-  let p0 = prices U.! i
-      p1 = prices U.! (i + 1)
-  in (p1 / p0) - 1
 
 -- | Centralizes a column vector (zero-mean) by subtracting its mean.
 centralizeColumn :: ReturnsRow -> ReturnsRow

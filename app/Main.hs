@@ -2,70 +2,71 @@
 
 module Main (main) where
 
+-- Base / utility imports
+import           Control.Exception          (evaluate)
+import           Control.DeepSeq            (force)
+import           Control.Monad              (forM_)
 import           Control.Monad.Trans.Except (runExceptT)
-import           Control.Monad              (forM_, when)
+import           Data.Time.Clock            (diffUTCTime, getCurrentTime)
 import           System.Exit                (exitFailure)
 import           System.IO                  (hFlush, stdout)
-import           Data.Time.Clock            (getCurrentTime, diffUTCTime)
+import           System.Random              (getStdGen)
 
-import qualified Data.Vector.Unboxed as U
-import qualified Data.Vector         as V
+-- Vectors
+import qualified Data.Vector                as V
+import qualified Data.Vector.Unboxed        as U
 
-import           SharpeOptimization.DataLoader  
+-- Project modules
+import           SharpeOptimization.DataLoader
 import           SharpeOptimization.Statistics
-import           SharpeOptimization.Simulate
-import           GHC.Conc                (getNumCapabilities)
-import           Control.DeepSeq         (force)
-import           Control.Exception       (evaluate)
+import           SharpeOptimization.SimulateSequential
+                     (simulateBestSharpeSequential)
+import           SharpeOptimization.SimulateParallel
+                     (simulateBestSharpeParallel)
+import GHC.Conc (getNumCapabilities)
 
 ------------------------------------------------------------
--- Prompt user for input, using a default value if input is empty
+-- Prompt helper with defaults
 ------------------------------------------------------------
 promptDefault :: String -> String -> IO String
 promptDefault msg def = do
   putStr $ msg ++ " [default: " ++ def ++ "]: "
   hFlush stdout
   input <- getLine
-  return (if null input then def else input)
-
+  pure (if null input then def else input)
 
 ------------------------------------------------------------
--- Helper: Formats a Double with fixed number of decimal places
+-- Simple fixed-precision printer
 ------------------------------------------------------------
 showFFloat :: Int -> Double -> String -> String
 showFFloat d x suffix = show (fromIntegral (round (x * f) :: Int) / f) ++ suffix
   where f = 10 ^ d :: Double
 
-
 ------------------------------------------------------------
--- Main program entry point
--- Prompts user for input, runs simulation, evaluates on secondary dataset
+-- Entry point
 ------------------------------------------------------------
 main :: IO ()
 main = do
   putStrLn "=== Sharpe Optimization ==="
 
-  caps <- getNumCapabilities
-  putStrLn $ "🧵 GHC runtime using " ++ show caps ++ " thread(s)"
-  when (caps == 1) $
-    putStrLn "⚠️  Warning: Only 1 thread enabled. Use +RTS -N4 to parallelize."
-
-  -- Prompt for input with defaults
+  -- Gather parameters -------------------------------------------------
   csvPath     <- promptDefault "Training CSV file path" "data/training.csv"
-  resultPath  <- promptDefault "Result CSV file path" "data/result.csv"
+  resultPath  <- promptDefault "Result CSV file path"   "data/result.csv"
   kStr        <- promptDefault "Number of assets to choose (k)" "25"
-  nStr        <- promptDefault "Number of trials per combination (n)" "1000"
+  nStr        <- promptDefault "Trials per combination (n)"     "1000"
+  parStr      <- promptDefault "Parallel? (1 = yes, 0 = no)"     "1"
 
-  case (reads kStr, reads nStr) of
-    ([(k, "")], [(n, "")]) -> runApp csvPath resultPath k n
-    _ -> putStrLn "❌ Invalid input. Please enter valid integers for k and n." >> exitFailure
+  case (reads kStr, reads nStr, reads parStr) of
+    ([(k,"")], [(n,"")], [(parFlag,"")]) ->
+        runApp csvPath resultPath k n (parFlag /= (0 :: Int))
+    _ -> putStrLn "❌ Invalid numeric input." >> exitFailure
 
 ------------------------------------------------------------
--- Executes the Sharpe ratio optimization using a training set,
--- then evaluates the resulting portfolio on a result dataset
+-- Core runner
 ------------------------------------------------------------
-runApp :: FilePath -> FilePath -> Int -> Int -> IO ()
-runApp csvPath resultPath k n = do
+runApp :: FilePath -> FilePath -> Int -> Int -> Bool -> IO ()
+runApp csvPath resultPath k n useParallel = do
+  -- Load training data ----------------------------------------------
   eitherData <- runExceptT (loadStockData csvPath)
   case eitherData of
     Left err -> putStrLn ("❌ " ++ err) >> exitFailure
@@ -74,55 +75,64 @@ runApp csvPath resultPath k n = do
       if k < 1 || k > m
         then putStrLn $ "❌ Invalid k: must be between 1 and " ++ show m
         else do
-          let priceMatrix  = toPriceMatrix priceRows
-              returnMatrix = priceMatrixToReturns priceMatrix
-              sigmaMatrix  = covarianceMatrix returnMatrix
+          -- Pre-compute training statistics --------------------------
+          let priceMatrix   = toPriceMatrix priceRows
+              returnMatrix  = priceMatrixToReturns priceMatrix
+              sigmaMatrix   = covarianceMatrix returnMatrix
+              simFn | useParallel = simulateBestSharpeParallel
+                    | otherwise   = simulateBestSharpeSequential
+              modeLabel = if useParallel then "parallel" else "sequential"
 
-          putStrLn $ "\n⏳ Running simulation over " ++ show k ++ "-asset portfolios (" ++ show n ++ " trials each)..."
+          coreCount <- getNumCapabilities
+          putStrLn $ "\n🧠 Using " ++ show coreCount ++ " CPU core(s)"
+          putStrLn $ "⏳ Running " ++ modeLabel ++
+                    " simulation over " ++ show k ++
+                    "-asset portfolios (" ++ show n ++ " trials each)..."
 
-          start <- getCurrentTime
-          result <- simulateBestSharpeParallel returnMatrix sigmaMatrix names k n
-          best <- evaluate (force result)
-          end <- getCurrentTime
 
-          let duration = realToFrac (diffUTCTime end start) :: Double
+          -- Run optimisation ----------------------------------------
+          gen0   <- getStdGen
+          start  <- getCurrentTime
+          let (result, _) = simFn returnMatrix sigmaMatrix names k n gen0
+          best   <- evaluate (force result)
+          end    <- getCurrentTime
+          let elapsed = realToFrac (diffUTCTime end start) :: Double
 
+          -- Present optimisation outcome ----------------------------
           case best of
             Nothing -> putStrLn "⚠️  No portfolio had non-zero volatility."
             Just (bestSR, chosenNames, weights) -> do
               putStrLn "\n✔️  Best Sharpe portfolio found:"
               putStrLn $ "    Sharpe Ratio : " ++ show bestSR
               putStrLn   "    Assets / Weights:"
-              let ws = U.toList weights
-              forM_ (zip chosenNames ws) $ \(nm, w) ->
+              forM_ (zip chosenNames (U.toList weights)) $ \(nm, w) ->
                 putStrLn $ "      " ++ nm ++ "  ->  " ++ show w
+              putStrLn $ "\n⏱️  Elapsed time: " ++ showFFloat 2 elapsed " s"
 
-              putStrLn $ "\n⏱️  Optimization Elapsed time: " ++ showFFloat 2 duration " seconds"
-
-              -- Evaluate same portfolio on a different dataset (result CSV)
+              --------------------------------------------------------
+              -- Evaluate on result dataset -------------------------
+              --------------------------------------------------------
               putStrLn "\n🔁 Evaluating same portfolio on result dataset..."
-              resultData <- runExceptT (loadStockData resultPath)
-              case resultData of
+              resData <- runExceptT (loadStockData resultPath)
+              case resData of
                 Left err2 -> putStrLn ("❌ Failed to load result CSV: " ++ err2)
                 Right (names', priceRows') -> do
-                  let nameToIndex = \name -> maybe (-1) id (lookup name (zip names' [0..]))
-                      indices = map nameToIndex chosenNames
-                      valid   = all (>= 0) indices
-
-                  if not valid
+                  let nameToIdx nm = maybe (-1) id (lookup nm (zip names' [0 ..]))
+                      idxs         = map nameToIdx chosenNames
+                  if any (< 0) idxs
                     then putStrLn "⚠️  Some selected stocks not found in result CSV."
                     else do
                       let priceMatrix'  = toPriceMatrix priceRows'
                           returnMatrix' = priceMatrixToReturns priceMatrix'
                           mu'           = muVector returnMatrix'
                           sigma'        = covarianceMatrix returnMatrix'
-                          muSubset      = selectByIndexesU indices mu'
-                          sigmaSubset   = V.map (selectByIndexesU indices) $ V.backpermute sigma' (V.fromList indices)
-
-                      case sharpeRatioFast muSubset sigmaSubset weights of
-                        Nothing -> putStrLn "⚠️  New Sharpe Ratio: invalid (likely zero volatility)."
+                          muSub         = selectByIndexesU idxs mu'
+                          sigmaSub      = V.map (selectByIndexesU idxs) $
+                                          V.backpermute sigma' (V.fromList idxs)
+                      case sharpeRatioFast muSub sigmaSub weights of
+                        Nothing    -> putStrLn "⚠️  New Sharpe Ratio invalid (zero σ?)."
                         Just newSR -> do
-                          putStrLn $ "✅ New Sharpe Ratio on result dataset: " ++ show newSR
+                          putStrLn $ "✅ New Sharpe Ratio: " ++ show newSR
                           if newSR > bestSR
-                            then putStrLn "🥳 Improved Sharpe in result dataset!"
-                            else putStrLn "😕 Worse or equal Sharpe in result dataset."
+                            then putStrLn "🥳 Improved Sharpe on result dataset!"
+                            else putStrLn "😕 Sharpe did not improve."
