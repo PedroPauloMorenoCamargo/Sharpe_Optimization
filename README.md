@@ -18,7 +18,6 @@ Extras implemented for **bonus marks**:
 
 * ⬇️ Data fetched **on‑demand** via python script that uses `yfinance` lib.
 * 🔁 Sharpe re‑evaluated on first trimester of **2025**, test set.
-* 🚦 Benchmarks include **serial vs parallel**.
 
 ---
 
