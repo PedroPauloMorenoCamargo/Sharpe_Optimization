@@ -44,7 +44,7 @@ Because the optimisation is non‑convex we perform an **exhaustive simulation**
 
 Total evaluations ≈ **142 million**.
 
-# 2  Why functional? Why parallel?
+## 2  Why functional? Why parallel?
 
 * **Purity** — deterministic functions allow local reasoning and automatic memoisation.
 * **Parallel safety** — no locks, no races.
