@@ -15,7 +15,7 @@
 | Long‑only, cap ≤ 20 % per asset                | Enforced in `Weights.validWeights`                      |
 | Parallelised *and* pure                        | `parListChunk` + pure math, no mutable state inside parallel function            |
 
-**Extras**   🔁 Check with 1 trimester of 2025 Sharpe · ⚡ serial vs parallel benchmarks.
+**Extras**   ✅ Test portfolio for First Trimester of 2025 · ⚡ serial vs parallel benchmarks.
 
 ---
 
