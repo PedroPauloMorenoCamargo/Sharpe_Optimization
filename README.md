@@ -15,7 +15,7 @@
 | Long‑only, cap ≤ 20 % per asset                | Enforced in `Weights.validWeights`                      |
 | Parallelised *and* pure                        | `parListChunk` + pure math, no mutable state inside parallel function            |
 
-**Extras**  ⬇️ on‑demand data · 🔁 out‑of‑sample Sharpe · ⚡ serial vs parallel benchmarks.
+**Extras**   🔁 out‑of‑sample Sharpe · ⚡ serial vs parallel benchmarks.
 
 ---
 
