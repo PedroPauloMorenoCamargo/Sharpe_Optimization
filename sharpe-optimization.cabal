@@ -22,8 +22,14 @@ library
   hs-source-dirs:      src
   build-depends:       base ^>=4.18.3.0,
                        split,
+                       transformers,
+                       parallel,
+                       random,
+                       splitmix,
+                       deepseq,
                        MonadRandom,
-                       transformers
+                       vector,
+                       async
   default-language:    Haskell2010
 
 executable sharpe-optimization-exe
@@ -32,8 +38,12 @@ executable sharpe-optimization-exe
   hs-source-dirs:      app
   build-depends:       base ^>=4.18.3.0,
                        sharpe-optimization,
-                       MonadRandom,
-                       transformers
+                       transformers,
+                       deepseq,
+                       time,
+                       containers,
+                       random,
+                       vector,
+                       MonadRandom
+  ghc-options:         -O2 -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
-
-
