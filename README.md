@@ -67,11 +67,9 @@ src/SharpeOptimization/
 ├── **SimulateParallel.hs** → Parallel wrapper using `parListChunk` to evaluate combinations
 └── **Types.hs** → Type Aliases
 
-data/download\_data.py
-→ Fetch DJIA closes via *yfinance*
+data/download\_data.py → Fetch DJIA closes via *yfinance*
 
-Makefile
-→ venv setup · data download · clean targets
+Makefile → venv setup · data download · clean targets
 
 ```
 ---
@@ -105,9 +103,8 @@ CSV → prices → returns → μ, Σ
   ↓
 best portfolio → re-evaluated on test CSV
 
-> *Parallel path* simply distributes the “combo loop”; math remains pure and deterministic.
-
 ```
+> *Parallel path* simply distributes the “combo loop”; math remains pure and deterministic.
 
 ## 4. Installation
 
