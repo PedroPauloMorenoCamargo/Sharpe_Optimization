@@ -99,7 +99,6 @@ $ cabal run sharpe-optimization-exe -- +RTS -N4
 ```
 
 When running answer the questions:
-## 5  Running the simulation
 
 Interactive run (defaults shown in `[]`):
 
