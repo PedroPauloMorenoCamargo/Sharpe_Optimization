@@ -339,7 +339,7 @@ Parallel? (1 = yes, 0 = no) [default: 1]:
 
 The chart below shows the **portfolio weights** for the best Sharpe ratio (**3.1067**, Sequential, k=26):
 
-![Optimal Portfolio Weights](img/optimal_portfolio_weights.png))
+![Optimal Portfolio Weights](img/optimal_portfolio_weights.png)
 
 ## 8. AI Usage Disclosure
 
