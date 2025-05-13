@@ -102,7 +102,7 @@ runApp csvPath resultPath k n useParallel = do
           case best of
             Nothing -> putStrLn "⚠️  No portfolio had non-zero volatility."
             Just (bestSR, chosenNames, weights) -> do
-              putStrLn "\n✔️  Best Sharpe portfolio found:"
+              putStrLn "\n✔️  Best Anual Sharpe portfolio found:"
               putStrLn $ "    Sharpe Ratio : " ++ show bestSR
               putStrLn   "    Assets / Weights:"
               forM_ (zip chosenNames (U.toList weights)) $ \(nm, w) ->
@@ -130,9 +130,9 @@ runApp csvPath resultPath k n useParallel = do
                           sigmaSub      = V.map (selectByIndexesU idxs) $
                                           V.backpermute sigma' (V.fromList idxs)
                       case sharpeRatioFast muSub sigmaSub weights of
-                        Nothing    -> putStrLn "⚠️  New Sharpe Ratio invalid (zero σ?)."
+                        Nothing    -> putStrLn "⚠️  New Anual harpe Ratio invalid (zero σ?)."
                         Just newSR -> do
-                          putStrLn $ "✅ New Sharpe Ratio: " ++ show newSR
+                          putStrLn $ "✅ New Anual Sharpe Ratio: " ++ show newSR
                           if newSR > bestSR
                             then putStrLn "🥳 Improved Sharpe on result dataset!"
                             else putStrLn "😕 Sharpe did not improve."
