@@ -6,7 +6,7 @@
 
 | Requirements                                   | Fulfilment in this repo                                 |
 | ---------------------------------------------- | ------------------------------------------------------- |
-| Project implements a functional programming language | The executable is written in Haskell |
+| Project implements a functional programming language | The executable is written in `Haskell` |
 | Use **30 Dow Jones** stocks                    | `data/download_data.py` pulls the full DJIA stocks‑set  |
 | Training period: **01 Aug 2024 → 31 Dec 2024** | Default in `Makefile` (`TRAIN_*`)                       |
 | Test period: **01 Jan 2025 → 31 Mar 2025**     | Default in `Makefile` (`TEST_*`)                        |
