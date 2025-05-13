@@ -106,13 +106,16 @@ sharpeRatioFast mu sigma w
   | U.length mu /= U.length w = Nothing
   | V.length sigma /= U.length w = Nothing
   | otherwise =
-      let !expectedReturn = dotProductU mu w
-          !σw             = matVecU sigma w
-          !variance       = dotProductU w σw
-          !epsilon        = 1e-8  -- stability threshold
+      let !expectedReturn = dotProductU mu w       -- μᵗ · w
+          !σw             = matVecU sigma w        -- Σ · w
+          !variance       = dotProductU w σw       -- wᵗ · Σ · w
+          !epsilon        = 1e-6
       in if variance < epsilon
          then Nothing
-         else Just (expectedReturn / sqrt variance)
+         else 
+           let annualizedSharpe = (expectedReturn * 252) / (sqrt variance * sqrt 252)
+           in Just annualizedSharpe
+
 
 
 ----------------------------------------------------------------------
@@ -123,10 +126,11 @@ sharpeRatioFast mu sigma w
 centralizeColumn :: ReturnsRow -> ReturnsRow
 centralizeColumn col = let m = mean col in U.map (\x -> x - m) col
 
--- | Applies zero-mean centralization to each column of the return matrix.
---   This is required before computing the covariance matrix.
+-- | Centralizes each column of a matrix by subtracting the mean,
+--   and returns the matrix in the original orientation (days × assets).
 centralizeMatrix :: ReturnMatrix -> ReturnMatrix
-centralizeMatrix mat = V.map centralizeColumn (transpose mat)
+centralizeMatrix mat = transpose $ V.map centralizeColumn (transpose mat)
+
 
 -- | Transposes a boxed vector of unboxed vectors.
 --   Converts rows to columns and vice versa.
