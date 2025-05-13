@@ -57,22 +57,15 @@ Parallelism strategy:
 
 ### Architecture
 ```text
-app/Main.hs
-→ CLI orchestration / timing / I/O
+app/Main.hs → CLI orchestration / timing / I/O
 
 src/SharpeOptimization/
-├── **DataLoader.hs**
-│  → Robust CSV ingestion & validation (`ExceptT IO`)
-├── **Statistics.hs**
-│  → Pure math: prices→returns, μ vector, Σ covariance, fast Sharpe
-├── **Weights.hs**
-│  → Pure random weight generation with 20% cap and sum ≈ 1
-├── **SimulateSequential.hs**
-│  → Pure, single-thread exhaustive search with deterministic RNG
-├── **SimulateParallel.hs**
-│  → Parallel wrapper using `parListChunk` to evaluate combinations
-└── **Types.hs**
-  → Centralised type aliases (`PriceMatrix`, `Best`, …)
+├── **DataLoader.hs** → Robust CSV ingestion & validation (`ExceptT IO`)
+├── **Statistics.hs** → Pure math: prices→returns, μ vector, Σ covariance, fast Sharpe
+├── **Weights.hs** → Pure random weight generation with 20% cap and sum ≈ 1
+├── **SimulateSequential.hs** → Pure, single-thread exhaustive search with deterministic RNG
+├── **SimulateParallel.hs** → Parallel wrapper using `parListChunk` to evaluate combinations
+└── **Types.hs** → Type Aliases
 
 data/download\_data.py
 → Fetch DJIA closes via *yfinance*
@@ -90,7 +83,7 @@ Makefile
 | **Main.hs**               | Orchestrates CLI prompts, input parsing, and simulation execution. Chooses between sequential and parallel backends and reports the results, including wall time. |
 | **DataLoader.hs**         | Parses and validates input CSVs. Converts rows into price matrices and strips out dates. Isolates file I/O from the core logic.                                   |
 | **Statistics.hs**         | Core numerical logic: prices to returns, mean vector μ, covariance matrix Σ, matrix-vector ops, and fast Sharpe ratio. Pure and reusable.                         |
-| **Weights.hs**            | Pure weight generation using rejection sampling. Enforces long-only constraint and ≤ 20% cap per asset. Returns validated weight vectors.                         |
+| **Weights.hs**            | Pure weight generation with a seed. Enforces long-only constraint and ≤ 20% cap per asset. Returns validated weight vectors.                         |
 | **SimulateSequential.hs** | Performs an exhaustive search over combinations and weight trials in a single-threaded, pure loop. Deterministically returns the best Sharpe result.              |
 | **SimulateParallel.hs**   | Distributes the same logic as the sequential version using `parListChunk`. Splits RNG state per thread and folds results using `better`.                          |
 | **Types.hs**              | Defines aliases for matrices, vectors, and the result triple. Improves clarity and maintainability across all modules.                                            |
