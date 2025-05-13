@@ -265,63 +265,80 @@ Number of assets to choose (k) [default: 25]:
 Number of trials per combination (n) [default: 1000]:
 Parallel? (1 = yes, 0 = no) [default: 1]:
 ```
-## 6. Expected Output & Benchmarks
+## 6. Expected Output
 ```
-⏳ Running simulation over 25-asset portfolios (50 trials each)...
+=== Sharpe Optimization ===
+Training CSV file path [default: data/training.csv]: 
+Result CSV file path [default: data/result.csv]: 
+Number of assets to choose (k) [default: 25]: 
+Trials per combination (n) [default: 1000]: 
+Parallel? (1 = yes, 0 = no) [default: 1]: 
 
-✔️  Best Sharpe portfolio found:
-    Sharpe Ratio : 0.19133890490130517
+🧠 Using 4 CPU core(s)
+⏳ Running parallel simulation over 25-asset portfolios (1000 trials each)...
+
+✔️  Best Anual Sharpe portfolio found:
+    Sharpe Ratio : 3.090032468460209
     Assets / Weights:
-      AAPL  ->  6.61426573572841e-2
-      AMGN  ->  5.7662123184381936e-2
-      AXP  ->  6.049365088186588e-2
-      BA  ->  2.9881444099959686e-2
-      CAT  ->  1.6502922939016243e-2
-      CRM  ->  4.377581824715346e-2
-      CSCO  ->  6.636225408207679e-2
-      CVX  ->  1.4271888618188582e-2
-      DIS  ->  5.4044253860645264e-2
-      DOW  ->  6.60192530454152e-2
-      GS  ->  6.763640964414544e-2
-      HD  ->  4.833322115709522e-2
-      HON  ->  2.7758743908091885e-2
-      IBM  ->  5.345353976300215e-2
-      INTC  ->  1.387311090131029e-2
-      JNJ  ->  2.5924101900068552e-2
-      JPM  ->  5.576292711529842e-2
-      KO  ->  4.686583069822723e-2
-      MCD  ->  3.1999587813132256e-3
-      MMM  ->  2.117927048681058e-2
-      MRK  ->  1.36148190273245e-3
-      MSFT  ->  4.391043299696419e-3
-      NKE  ->  4.485089765131787e-2
-      PG  ->  5.0749493832663126e-2
-      TRV  ->  5.95037026422398e-2
+      AAPL  ->  8.283037177942251e-2
+      AMGN  ->  9.918595969828782e-4
+      AXP  ->  8.137273897878745e-2
+      CAT  ->  1.9774265692960574e-3
+      CRM  ->  8.54589779240911e-2
+      CSCO  ->  7.556553832670138e-2
+      DIS  ->  5.9731012255817326e-2
+      GS  ->  5.159661482929821e-4
+      HD  ->  3.520916239734654e-2
+      HON  ->  6.317045464461094e-3
+      IBM  ->  7.55551150626902e-2
+      JNJ  ->  1.4514462581214502e-2
+      JPM  ->  8.053475635461343e-2
+      KO  ->  1.0434415408393388e-2
+      MMM  ->  1.800253592949377e-3
+      MRK  ->  6.4707532831930386e-3
+      MSFT  ->  1.0367397573676253e-2
+      NKE  ->  3.3442086954724236e-3
+      PG  ->  7.419093480133743e-2
+      TRV  ->  6.782330360273364e-2
+      UNH  ->  4.366927675591561e-2
+      V  ->  7.476515711377717e-2
+      VZ  ->  1.0882269331593359e-2
+      WBA  ->  2.5151976386460465e-3
+      WMT  ->  9.316239876259484e-2
 
-⏱️  Optimization Elapsed time: 22.77 seconds
+⏱️  Elapsed time: 199.79 s
 
 🔁 Evaluating same portfolio on result dataset...
-✅ New Sharpe Ratio on result dataset: -2.3305575327931777e-2
-😕 Worse or equal Sharpe in result dataset.
-```
-## 7. Results
+✅ New Anual Sharpe Ratio: -0.36654063525308633
+😕 Sharpe did not improve.
 
-| Cores  | **Best Sharpe Ratio (2024_2nd_Semester)** | **Optimization Time (s)** | **Best Sharpe Ratio (2025_1st_Trimester)** | **Comparison**                          |
-| -------------- | ----------------------- | ------------------------- | --------------------------------- | --------------------------------------- |
-| 4  | 0.31707951483423114     | 162.4                     | 4.324464935386083e-3              | Worse Sharpe in Trimester |
-|  4  | 0.33898489256815745     | 170.43                    | -1.7167632267105295e-2            | Worse Sharpe in Trimester|
-|  8  | 0.29796031386257094     | 112.63                    | -1.7389490189320743e-4            | Worse Sharpe in Trimester|
-| 8 | 0.36091653571516474     | 113.99                    | -3.790277278120213e-2            | Worse Sharpe in Trimester|
+```
+## 7. Updated Output & Benchmarks
+
+### 🔁 Summary of Best Sharpe Ratios
+
+| Mode        | k  | Trials (n) | Sharpe (Train) | Time (s) | Sharpe (Test) | Outcome                  |
+|-------------|----|------------|----------------|----------|----------------|---------------------------|
+| Parallel    | 28 | 1000       | 2.5608         | 7.97     | 0.4674         | Did not improve           |
+| Sequential  | 28 | 1000       | 2.6235         | 16.41    | 0.1422         | Did not improve           |
+| Parallel    | 27 | 1000       | 2.7364         | 13.12    | 0.1805         | Did not improve           |
+| Sequential  | 27 | 1000       | 2.7542         | 46.17    | 0.2351         | Did not improve           |
+| Parallel    | 26 | 1000       | 3.0344         | 46.12    | 0.0738         | Did not improve           |
+| Sequential  | 26 | 1000       | 3.1067         | 236.93   | 0.0580         | Did not improve           |
+| Parallel    | 25 | 1000       | 3.0900         | 199.79   | -0.3665        | Did not improve           |
+| Sequential  | 25 | 1000       | 3.0819         | 1174.10  | 0.3213         | Did not improve           |
 
 ### Key Observations:
-- **Best Sharpe Ratio (2024)**: Sharpe ratios range between **0.2979** and **0.3609**, indicating strong portfolio selection during training.
-- **Sharpe Ratio (2025)**: Significant drop in Sharpe ratios for the test period (from **4.32e-3** to **-3.79e-2**), indicating poor generalization.
-- **Optimization Time**: Optimization time improves with 8 cores (**113 seconds**) vs. 4 cores (**162-170 seconds**), showing efficient parallel scaling.
+- **Best training Sharpe Ratio**: 3.1067 (Sequential, k=26)
+- **Best test Sharpe Ratio**: 0.4674 (Parallel, k=28)
+- **Overall**: All training-optimal portfolios showed **Sharpe deterioration** in the test dataset.
+- **Performance**: Parallel execution consistently **outperformed sequential** in speed by a wide margin.
 
-### Optimal Portfolio Visualization:
-The chart below shows the **optimal portfolio weights** based on the highest Sharpe ratio of **0.3609** found during the simulation:
+### 📊 Optimal Portfolio Visualization
 
-![Optimal Portfolio Weights](img/optimal_portfolio_weights.png)
+The chart below shows the **portfolio weights** for the best Sharpe ratio (**3.1067**, Sequential, k=26):
+
+![Optimal Portfolio Weights](img/optimal_portfolio_weights.png))
 
 ## 8. AI Usage Disclosure
 
