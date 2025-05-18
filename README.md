@@ -150,7 +150,7 @@ Generates random portfolio weights subject to constraints:
 
 Implements the exhaustive search engine for simulation in a single thread:
 
-* Enumerates all combinations of `k` out of 30 DJIA stocks (≈ 142k portfolios).
+* Enumerates all combinations of `k` out of 30 stocks (≈ 142k portfolios).
 * For each combination, generates `n` valid random weights.
 * Computes the Sharpe ratio using the subsets of μ and Σ from `Statistics`.
 * Tracks the highest-performing portfolio across all evaluated combinations.
@@ -343,8 +343,12 @@ The chart below shows the **portfolio weights** for the best Sharpe ratio (**3.1
 
 ## 8. AI Usage Disclosure
 
-* Creating and Optimizing Functions
+AI was used in some cases to do the following tasks: 
+
+* Creating Functions
+* Optimizing and Refactoring Functions
 * Writing Readme
-* Cabal Structure
-* Commenting Code
+* Understand Cabal Structure
+* Code Documentation
+* Understand Haskell Libraries
 
